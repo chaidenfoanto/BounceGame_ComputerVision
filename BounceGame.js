@@ -1,6 +1,5 @@
 // ===========================================================
-//                 BOUNCY BALL — FINAL VERSION
-//           Smooth, Realistic, Colorful, Aesthetic
+//                 BOUNCY BALL — FINAL IMPROVED
 // ===========================================================
 
 // -------------------------------
@@ -11,9 +10,10 @@ let ballSpeedVert = 0;
 let ballSpeedHorizon = 0;
 let ballSize = 35;
 
-let gravity = 0.6;
-let friction = 0.05;
-let airfriction = 0.00005;
+// --- bola lebih pelan ---
+let gravity = 0.45;
+let friction = 0.08;
+let airfriction = 0.0001;
 
 let racketWidth = 90;
 let racketHeight = 18;
@@ -48,7 +48,7 @@ let niceColors = [
 // SETUP
 // -------------------------------
 function setup() {
-  createCanvas(500, 500);
+  createCanvas(500, 500); // layar tetap kotak 1:1
 
   ballX = width / 3;
   ballY = height / 2;
@@ -73,7 +73,7 @@ function draw() {
 
 // ===========================================================
 // START SCREEN
-// ===========================================================
+//-----------------------------------------------------------
 function drawStart() {
   gradientBackground();
 
@@ -90,7 +90,7 @@ function drawStart() {
 
 // ===========================================================
 // GAME OVER
-// ===========================================================
+//-----------------------------------------------------------
 function drawGameOver() {
   gradientBackground();
 
@@ -110,7 +110,7 @@ function drawGameOver() {
 
 // ===========================================================
 // MAIN GAME
-// ===========================================================
+//-----------------------------------------------------------
 function drawGame() {
   gradientBackground();
 
@@ -131,7 +131,7 @@ function drawGame() {
 
 // ===========================================================
 // BACKGROUND GRADIENT
-// ===========================================================
+//-----------------------------------------------------------
 function gradientBackground() {
   for (let y = 0; y < height; y++) {
     let inter = map(y, 0, height, 0, 1);
@@ -144,7 +144,7 @@ function gradientBackground() {
 
 // ===========================================================
 // BALL PHYSICS
-// ===========================================================
+//-----------------------------------------------------------
 function applyGravity() {
   ballSpeedVert += gravity;
   ballSpeedVert -= ballSpeedVert * airfriction;
@@ -165,8 +165,8 @@ function moveBall() {
 
 function makeBounceBottom(surface) {
   ballY = surface - ballSize / 2;
-  ballSpeedVert *= -0.9;
-  ballSpeedHorizon *= 0.98;
+  ballSpeedVert *= -0.85;
+  ballSpeedHorizon *= 0.96;
 }
 
 function drawBallGlow() {
@@ -185,8 +185,8 @@ function drawBall() {
 
 
 // ===========================================================
-// RACKET (FOLLOW MOUSE SMOOTH)
-// ===========================================================
+// RACKET
+//-----------------------------------------------------------
 function drawRacket() {
   racketX += (mouseX - racketX) * racketSmooth;
   racketY += (mouseY - racketY) * racketSmooth;
@@ -217,8 +217,8 @@ function drawRacket() {
 
 
 // ===========================================================
-// WALL SYSTEM
-// ===========================================================
+// WALL SYSTEM (warna random)
+// ----------------------------------------------------------
 function wallProcessor() {
   wallTimer++;
   if (wallTimer > 110) {
@@ -239,9 +239,9 @@ function createWall() {
   let gapY = random(80, height - 200);
   let w = 70;
 
-  let color = niceColors[int(random(niceColors.length))];
+  let blockColor = random(niceColors); // warna random
 
-  walls.push([width, gapY, w, gapHeight, false, color]);
+  walls.push([width, gapY, w, gapHeight, false, blockColor]);
 }
 
 function wallDrawer(i) {
@@ -254,10 +254,12 @@ function wallDrawer(i) {
 
   noStroke();
 
+  // shadow
   fill(0, 40);
   rect(x + 5, 0 + 5, ww, gapY, 12);
   rect(x + 5, gapY + gapH + 5, ww, height - (gapY + gapH), 12);
 
+  // main block
   fill(col);
   rect(x, 0, ww, gapY, 12);
   rect(x, gapY + gapH, ww, height - (gapY + gapH), 12);
@@ -266,7 +268,7 @@ function wallDrawer(i) {
 
 // ===========================================================
 // COLLISION + SCORING
-// ===========================================================
+//-----------------------------------------------------------
 function watchWallCollision() {
   for (let w of walls) {
     let x = w[0];
@@ -274,22 +276,20 @@ function watchWallCollision() {
     let gapH = w[3];
     let blockW = w[2];
 
+    // Score
     if (!w[4] && ballX > x + blockW) {
       w[4] = true;
       score++;
-
-      floatingTexts.push({
-        x: ballX,
-        y: ballY,
-        alpha: 255
-      });
+      floatingTexts.push({ x: ballX, y: ballY, alpha: 255 });
     }
 
+    // Collision top
     let hitTop =
       ballX + ballSize/2 > x &&
       ballX - ballSize/2 < x + blockW &&
       ballY - ballSize/2 < gapY;
 
+    // Collision bottom
     let hitBottom =
       ballX + ballSize/2 > x &&
       ballX - ballSize/2 < x + blockW &&
@@ -308,13 +308,13 @@ function shakeBall() {
 }
 
 function decreaseHealth() {
-  health--;
+  health -= 1.5; // darah lebih cepat habis
 }
 
 
 // ===========================================================
 // FLOATING TEXT +1
-// ===========================================================
+//-----------------------------------------------------------
 function drawFloatingTexts() {
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let t = floatingTexts[i];
@@ -332,8 +332,8 @@ function drawFloatingTexts() {
 
 
 // ===========================================================
-// HUD (Score & Health)
-// ===========================================================
+// HUD
+//-----------------------------------------------------------
 function drawHUD() {
   textSize(24);
   fill(255);
@@ -352,7 +352,7 @@ function healthCheck() {
 
 // ===========================================================
 // INPUT
-// ===========================================================
+//-----------------------------------------------------------
 function mousePressed() {
   if (gameScreen === 0) {
     gameScreen = 1;
@@ -373,4 +373,3 @@ function restartGame() {
 
   walls = [];
 }
-
