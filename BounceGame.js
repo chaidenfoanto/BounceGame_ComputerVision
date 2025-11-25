@@ -6,14 +6,12 @@ let gameScreen = 0; // 0 = start, 1 = game, 2 = game over
 
 let ballX, ballY;
 let ballSize = 20;
-let ballColor;
 
 let gravity = 1;
 let ballSpeedVert = 0;
 let airfriction = 0.0001;
 let friction = 0.1;
 
-let racketColor;
 let racketWidth = 100;
 let racketHeight = 10;
 let racketBounceRate = 20;
@@ -26,7 +24,6 @@ let lastAddTime = 0;
 let minGapHeight = 200;
 let maxGapHeight = 300;
 let wallWidth = 80;
-let wallColors;
 
 // Wall array: [x, y, width, gapheight, scored]
 let walls = [];
@@ -38,31 +35,51 @@ let healthBarWidth = 60;
 
 let scoreValue = 0;
 
+// color theme
+let bgTop, bgBottom;
+let ballColorBright;
+let racketColorBright;
+let wallColorBright;
+
 
 // =============================
 // SETUP
 // =============================
 function setup() {
   createCanvas(500, 500);
+
+  // Background gradient
+  bgTop = color(52, 152, 219);     // biru muda
+  bgBottom = color(155, 89, 182);  // ungu
+
   ballX = width / 4;
   ballY = height / 5;
 
-  ballColor = color(0);
-  racketColor = color(0);
-  wallColors = color(0);
+  ballColorBright = color(241, 196, 15); // kuning
+  racketColorBright = color(46, 204, 113); // hijau
+  wallColorBright = color(231, 76, 60); // merah
 }
 
 
 // =============================
-// DRAW (main loop)
+// MAIN DRAW
 // =============================
 function draw() {
-  if (gameScreen === 0) {
-    initScreen();
-  } else if (gameScreen === 1) {
-    gameScreenDraw();
-  } else if (gameScreen === 2) {
-    gameOverScreen();
+  if (gameScreen === 0) initScreen();
+  else if (gameScreen === 1) gameScreenDraw();
+  else if (gameScreen === 2) gameOverScreen();
+}
+
+
+// =============================
+// BACKGROUND GRADIENT
+// =============================
+function gradientBackground() {
+  for (let y = 0; y < height; y++) {
+    let inter = map(y, 0, height, 0, 1);
+    let col = lerpColor(bgTop, bgBottom, inter);
+    stroke(col);
+    line(0, y, width, y);
   }
 }
 
@@ -71,14 +88,19 @@ function draw() {
 // SCREEN CONTENT
 // =============================
 function initScreen() {
-  background(0);
+  gradientBackground();
+
   textAlign(CENTER);
   fill(255);
-  text("Klik untuk memulai", width / 2, height / 2);
+  textSize(36);
+  text("Bouncy Ball Game", width / 2, height / 2 - 40);
+
+  textSize(18);
+  text("Klik untuk memulai", width / 2, height / 2 + 10);
 }
 
 function gameScreenDraw() {
-  background(255);
+  gradientBackground();
 
   drawBall();
   applyGravity();
@@ -91,6 +113,34 @@ function gameScreenDraw() {
   wallHandler();
 
   drawHealthBar();
+
+  drawScore();
+}
+
+function gameOverScreen() {
+  gradientBackground();
+
+  textAlign(CENTER);
+  fill(255);
+  textSize(40);
+  text("GAME OVER", width / 2, height / 2 - 40);
+
+  textSize(20);
+  text("Skor Kamu: " + scoreValue, width / 2, height / 2);
+
+  textSize(16);
+  text("Klik untuk restart", width / 2, height / 2 + 40);
+}
+
+
+// =============================
+// SCORE UI
+// =============================
+function drawScore() {
+  textAlign(LEFT);
+  fill(255);
+  textSize(20);
+  text("Score: " + scoreValue, 20, 30);
 }
 
 
@@ -98,7 +148,12 @@ function gameScreenDraw() {
 // BALL
 // =============================
 function drawBall() {
-  fill(ballColor);
+  noStroke();
+
+  fill(0, 50);
+  ellipse(ballX + 5, ballY + 5, ballSize + 5);
+
+  fill(ballColorBright);
   ellipse(ballX, ballY, ballSize);
 }
 
@@ -149,9 +204,15 @@ function applyHorizontalSpeed() {
 // RACKET
 // =============================
 function drawRacket() {
-  fill(racketColor);
-  rectMode(CENTER);
-  rect(mouseX, mouseY, racketWidth, racketHeight);
+  noStroke();
+
+  // Shadow
+  fill(0, 80);
+  rect(mouseX + 3, mouseY + 3, racketWidth, racketHeight, 8);
+
+  // Racket
+  fill(racketColorBright);
+  rect(mouseX, mouseY, racketWidth, racketHeight, 8);
 }
 
 function watchRacketBounce() {
@@ -205,11 +266,15 @@ function wallDrawer(index) {
   let ww = w[2];
   let gh = w[3];
 
-  fill(wallColors);
-  rectMode(CORNER);
+  noStroke();
 
-  rect(x, 0, ww, y); // top
-  rect(x, y + gh, ww, height - (y + gh)); // bottom
+  fill(0, 60);
+  rect(x + 5, 0 + 5, ww, y);
+  rect(x + 5, y + gh + 5, ww, height - (y + gh));
+
+  fill(wallColorBright);
+  rect(x, 0, ww, y, 6);
+  rect(x, y + gh, ww, height - (y + gh), 6);
 }
 
 function wallMover(index) {
@@ -255,21 +320,26 @@ function watchWallCollision(index) {
 
 
 // =============================
-// HEALTH & SCORE
+// HEALTH BAR
 // =============================
 function drawHealthBar() {
   noStroke();
-
   rectMode(CORNER);
 
-  fill(236, 240, 241);
-  rect(ballX - healthBarWidth / 2, ballY - 30, healthBarWidth, 5);
+  fill(255, 255, 255, 80);
+  rect(ballX - healthBarWidth / 2, ballY - 35, healthBarWidth, 8, 5);
 
-  if (health > 60) fill(46, 204, 113);
-  else if (health > 30) fill(230, 126, 34);
-  else fill(231, 76, 60);
+  let col;
+  if (health > 60) col = color(46, 204, 113);
+  else if (health > 30) col = color(241, 196, 15);
+  else col = color(231, 76, 60);
 
-  rect(ballX - healthBarWidth / 2, ballY - 30, healthBarWidth * (health / maxHealth), 5);
+  // glow
+  fill(red(col), green(col), blue(col), 150);
+  rect(ballX - healthBarWidth / 2, ballY - 35, (health / maxHealth) * healthBarWidth, 8, 5);
+
+  fill(col);
+  rect(ballX - healthBarWidth / 2, ballY - 35, (health / maxHealth) * healthBarWidth, 8, 5);
 }
 
 function decreaseHealth() {
@@ -285,14 +355,8 @@ function score() {
 // =============================
 // GAME STATE
 // =============================
-function gameOverScreen() {
-  background(0);
-  textAlign(CENTER);
-  fill(255);
-  textSize(30);
-  text("Game Over", width / 2, height / 2 - 20);
-  textSize(15);
-  text("Click to Restart", width / 2, height / 2 + 10);
+function gameOver() {
+  gameScreen = 2;
 }
 
 function restart() {
@@ -307,13 +371,9 @@ function restart() {
   gameScreen = 0;
 }
 
-function gameOver() {
-  gameScreen = 2;
-}
-
 
 // =============================
-// INPUT
+// INPUT HANDLER
 // =============================
 function mousePressed() {
   if (gameScreen === 0) gameScreen = 1;
