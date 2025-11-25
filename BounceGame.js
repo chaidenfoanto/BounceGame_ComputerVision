@@ -1,382 +1,321 @@
-// ===========================================================
-//                 BOUNCY BALL — FINAL VERSION
-//       Slow Ball, Quick Health Loss, Random Walls, Square UI
-// ===========================================================
+// =============================
+// Variabel Global
+// =============================
 
-// -------------------------------
-// GLOBAL VARIABLES
-// -------------------------------
+let gameScreen = 0; // 0 = start, 1 = game, 2 = game over
+
 let ballX, ballY;
+let ballSize = 20;
+let ballColor;
+
+let gravity = 1;
 let ballSpeedVert = 0;
-let ballSpeedHorizon = 0;
-let ballSize = 35;
+let airfriction = 0.0001;
+let friction = 0.1;
 
-// Bola lebih pelan
-let gravity = 0.35;
-let friction = 0.05;
-let airfriction = 0.00005;
+let racketColor;
+let racketWidth = 100;
+let racketHeight = 10;
+let racketBounceRate = 20;
 
-let racketWidth = 90;
-let racketHeight = 18;
-let racketX = 0;
-let racketY = 0;
-let racketSmooth = 0.15;
+let ballSpeedHorizon = 10;
 
+let wallSpeed = 5;
+let wallInterval = 1000;
+let lastAddTime = 0;
+let minGapHeight = 200;
+let maxGapHeight = 300;
+let wallWidth = 80;
+let wallColors;
+
+// Wall array: [x, y, width, gapheight, scored]
 let walls = [];
-let wallSpeed = 3.2;
-let wallTimer = 0;
 
-let gameScreen = 0;
-let score = 0;
-let health = 3;
+let maxHealth = 100;
+let health = 100;
+let healthDecrease = 1;
+let healthBarWidth = 60;
 
-let floatingTexts = [];
-
-let bgTop, bgBottom;
+let scoreValue = 0;
 
 
-// -------------------------------
-// SETUP — canvas tetap kotak 1:1
-// -------------------------------
+// =============================
+// SETUP
+// =============================
 function setup() {
-  let size = min(windowWidth, windowHeight) * 0.9;
-  createCanvas(size, size);
+  createCanvas(500, 500);
+  ballX = width / 4;
+  ballY = height / 5;
 
-  ballX = width / 3;
-  ballY = height / 2;
-
-  racketX = ballX;
-  racketY = ballY + 100;
-
-  bgTop = color(0, 80, 200);
-  bgBottom = color(100, 20, 200);
-}
-
-// Agar tetap square saat resize
-function windowResized() {
-  let size = min(windowWidth, windowHeight) * 0.9;
-  resizeCanvas(size, size);
+  ballColor = color(0);
+  racketColor = color(0);
+  wallColors = color(0);
 }
 
 
-// -------------------------------
-// DRAW LOOP
-// -------------------------------
+// =============================
+// DRAW (main loop)
+// =============================
 function draw() {
-  if (gameScreen === 0) drawStart();
-  else if (gameScreen === 1) drawGame();
-  else if (gameScreen === 2) drawGameOver();
+  if (gameScreen === 0) {
+    initScreen();
+  } else if (gameScreen === 1) {
+    gameScreenDraw();
+  } else if (gameScreen === 2) {
+    gameOverScreen();
+  }
 }
 
 
-// ===========================================================
-// START SCREEN
-// ===========================================================
-function drawStart() {
-  gradientBackground();
-
+// =============================
+// SCREEN CONTENT
+// =============================
+function initScreen() {
+  background(0);
   textAlign(CENTER);
-  textSize(40);
   fill(255);
-  text('BOUNCY BALL', width/2, height/2 - 40);
-
-  textSize(20);
-  fill(255, 180);
-  text('Klik untuk mulai', width/2, height/2 + 20);
+  text("Klik untuk memulai", width / 2, height / 2);
 }
 
+function gameScreenDraw() {
+  background(255);
 
-// ===========================================================
-// GAME OVER
-// ===========================================================
-function drawGameOver() {
-  gradientBackground();
-
-  textAlign(CENTER);
-  textSize(40);
-  fill(255);
-  text('GAME OVER', width/2, height/2 - 30);
-
-  textSize(22);
-  text('Score: ' + score, width/2, height/2 + 15);
-
-  textSize(18);
-  fill(255, 180);
-  text('Klik untuk restart', width/2, height/2 + 60);
-}
-
-
-// ===========================================================
-// MAIN GAME
-// ===========================================================
-function drawGame() {
-  gradientBackground();
-
-  applyGravity();
-  moveBall();
-  drawBallGlow();
   drawBall();
-  applyHorizontalSpeed();
+  applyGravity();
+  keepInScreen();
   drawRacket();
-  wallProcessor();
-  watchWallCollision();
-  drawHUD();
-  drawFloatingTexts();
+  watchRacketBounce();
+  applyHorizontalSpeed();
 
-  healthCheck();
+  wallAdder();
+  wallHandler();
+
+  drawHealthBar();
 }
 
 
-// ===========================================================
-// BACKGROUND GRADIENT
-// ===========================================================
-function gradientBackground() {
-  for (let y = 0; y < height; y++) {
-    let inter = map(y, 0, height, 0, 1);
-    let c = lerpColor(bgTop, bgBottom, inter);
-    stroke(c);
-    line(0, y, width, y);
-  }
-}
-
-
-// ===========================================================
-// BALL PHYSICS
-// ===========================================================
-function applyGravity() {
-  ballSpeedVert += gravity;
-  ballSpeedVert -= ballSpeedVert * airfriction;
-}
-
-function applyHorizontalSpeed() {
-  ballSpeedHorizon *= (1 - friction);
-  ballX += ballSpeedHorizon;
-}
-
-function moveBall() {
-  ballY += ballSpeedVert;
-
-  if (ballY + ballSize/2 >= height) {
-    makeBounceBottom(height);
-  }
-}
-
-// Pantulan lebih pelan
-function makeBounceBottom(surface) {
-  ballY = surface - ballSize / 2;
-  ballSpeedVert *= -0.7;
-  ballSpeedHorizon *= 0.98;
-}
-
-function drawBallGlow() {
-  noStroke();
-  for (let i = 30; i > 0; i -= 5) {
-    fill(255, 255, 255, i);
-    ellipse(ballX, ballY, ballSize + i);
-  }
-}
-
+// =============================
+// BALL
+// =============================
 function drawBall() {
-  noStroke();
-  fill(255);
+  fill(ballColor);
   ellipse(ballX, ballY, ballSize);
 }
 
+function applyGravity() {
+  ballSpeedVert += gravity;
+  ballY += ballSpeedVert;
+  ballSpeedVert -= ballSpeedVert * airfriction;
+}
 
-// ===========================================================
+function makeBounceBottom(surface) {
+  ballY = surface - ballSize / 2;
+  ballSpeedVert *= -1;
+  ballSpeedVert -= ballSpeedVert * friction;
+}
+
+function makeBounceTop(surface) {
+  ballY = surface + ballSize / 2;
+  ballSpeedVert *= -1;
+  ballSpeedVert -= ballSpeedVert * friction;
+}
+
+function makeBounceLeft(surface) {
+  ballX = surface + ballSize / 2;
+  ballSpeedHorizon *= -1;
+  ballSpeedHorizon -= ballSpeedHorizon * friction;
+}
+
+function makeBounceRight(surface) {
+  ballX = surface - ballSize / 2;
+  ballSpeedHorizon *= -1;
+  ballSpeedHorizon -= ballSpeedHorizon * friction;
+}
+
+function keepInScreen() {
+  if (ballY + ballSize / 2 > height) makeBounceBottom(height);
+  if (ballY - ballSize / 2 < 0) makeBounceTop(0);
+  if (ballX - ballSize / 2 < 0) makeBounceLeft(0);
+  if (ballX + ballSize / 2 > width) makeBounceRight(width);
+}
+
+function applyHorizontalSpeed() {
+  ballX += ballSpeedHorizon;
+  ballSpeedHorizon -= ballSpeedHorizon * airfriction;
+}
+
+
+// =============================
 // RACKET
-// ===========================================================
+// =============================
 function drawRacket() {
-  racketX += (mouseX - racketX) * racketSmooth;
-  racketY += (mouseY - racketY) * racketSmooth;
+  fill(racketColor);
+  rectMode(CENTER);
+  rect(mouseX, mouseY, racketWidth, racketHeight);
+}
 
-  let left = racketX - racketWidth/2;
-  let right = racketX + racketWidth/2;
-  let top = racketY - racketHeight/2;
-  let bottom = racketY + racketHeight/2;
+function watchRacketBounce() {
+  let overhead = mouseY - pmouseY;
 
-  // Collision
-  if (ballX > left &&
-      ballX < right &&
-      ballY + ballSize/2 > top &&
-      ballY - ballSize/2 < bottom &&
-      ballSpeedVert > 0) {
+  if (
+    ballX + ballSize / 2 > mouseX - racketWidth / 2 &&
+    ballX - ballSize / 2 < mouseX + racketWidth / 2
+  ) {
+    if (dist(ballX, ballY, ballX, mouseY) <= ballSize / 2 + abs(overhead)) {
+      makeBounceBottom(mouseY);
+      ballSpeedHorizon = (ballX - mouseX) / 5;
 
-    ballY = top - ballSize/2;
-    ballSpeedVert *= -0.7;
-
-    // bola lebih smooth
-    ballSpeedHorizon += (mouseX - pmouseX) * 0.18;
+      if (overhead < 0) {
+        ballY += overhead;
+        ballSpeedVert += overhead;
+      }
+    }
   }
-
-  // shadow
-  noStroke();
-  fill(0, 60);
-  rect(left + 4, top + 4, racketWidth, racketHeight, 10);
-
-  fill(255);
-  rect(left, top, racketWidth, racketHeight, 10);
 }
 
 
-// ===========================================================
-// WALL SYSTEM
-// ===========================================================
-function wallProcessor() {
-  wallTimer++;
-  if (wallTimer > 110) {
-    createWall();
-    wallTimer = 0;
-  }
+// =============================
+// WALLS
+// =============================
+function wallAdder() {
+  if (millis() - lastAddTime > wallInterval) {
+    let randHeight = round(random(minGapHeight, maxGapHeight));
+    let randY = round(random(0, height - randHeight));
 
-  for (let i = 0; i < walls.length; i++) {
-    walls[i][0] -= wallSpeed;
+    let wall = [width, randY, wallWidth, randHeight, 0];
+    walls.push(wall);
+
+    lastAddTime = millis();
+  }
+}
+
+function wallHandler() {
+  for (let i = walls.length - 1; i >= 0; i--) {
+    wallMover(i);
     wallDrawer(i);
+    watchWallCollision(i);
+    wallRemover(i);
   }
-
-  walls = walls.filter(w => w[0] + w[2] > 0);
 }
 
-function createWall() {
-  let gapHeight = 140;
-  let gapY = random(80, height - 200);
-  let w = 70;
-
-  // warna random FULL RGB
-  let col = color(random(50,255), random(50,255), random(50,255));
-
-  walls.push([width, gapY, w, gapHeight, false, col]);
-}
-
-function wallDrawer(i) {
-  let w = walls[i];
+function wallDrawer(index) {
+  let w = walls[index];
   let x = w[0];
-  let gapY = w[1];
+  let y = w[1];
   let ww = w[2];
-  let gapH = w[3];
-  let col = w[5];
+  let gh = w[3];
 
+  fill(wallColors);
+  rectMode(CORNER);
+
+  rect(x, 0, ww, y); // top
+  rect(x, y + gh, ww, height - (y + gh)); // bottom
+}
+
+function wallMover(index) {
+  walls[index][0] -= wallSpeed;
+}
+
+function wallRemover(index) {
+  if (walls[index][0] + walls[index][2] < 0) {
+    walls.splice(index, 1);
+  }
+}
+
+function watchWallCollision(index) {
+  let w = walls[index];
+  let x = w[0];
+  let y = w[1];
+  let ww = w[2];
+  let gh = w[3];
+  let scored = w[4];
+
+  let topWall = { x: x, y: 0, w: ww, h: y };
+  let bottomWall = { x: x, y: y + gh, w: ww, h: height - (y + gh) };
+
+  let hitTop =
+    ballX + ballSize / 2 > topWall.x &&
+    ballX - ballSize / 2 < topWall.x + topWall.w &&
+    ballY + ballSize / 2 > topWall.y &&
+    ballY - ballSize / 2 < topWall.y + topWall.h;
+
+  let hitBottom =
+    ballX + ballSize / 2 > bottomWall.x &&
+    ballX - ballSize / 2 < bottomWall.x + bottomWall.w &&
+    ballY + ballSize / 2 > bottomWall.y &&
+    ballY - ballSize / 2 < bottomWall.y + bottomWall.h;
+
+  if (hitTop || hitBottom) decreaseHealth();
+
+  if (ballX > x + ww / 2 && scored === 0) {
+    w[4] = 1;
+    score();
+  }
+}
+
+
+// =============================
+// HEALTH & SCORE
+// =============================
+function drawHealthBar() {
   noStroke();
 
-  fill(0, 40);
-  rect(x + 5, 0 + 5, ww, gapY, 12);
-  rect(x + 5, gapY + gapH + 5, ww, height - (gapY + gapH), 12);
+  rectMode(CORNER);
 
-  fill(col);
-  rect(x, 0, ww, gapY, 12);
-  rect(x, gapY + gapH, ww, height - (gapY + gapH), 12);
+  fill(236, 240, 241);
+  rect(ballX - healthBarWidth / 2, ballY - 30, healthBarWidth, 5);
+
+  if (health > 60) fill(46, 204, 113);
+  else if (health > 30) fill(230, 126, 34);
+  else fill(231, 76, 60);
+
+  rect(ballX - healthBarWidth / 2, ballY - 30, healthBarWidth * (health / maxHealth), 5);
 }
 
-
-// ===========================================================
-// COLLISION + SCORING
-// ===========================================================
-function watchWallCollision() {
-  for (let w of walls) {
-    let x = w[0];
-    let gapY = w[1];
-    let gapH = w[3];
-    let blockW = w[2];
-
-    // SCORE
-    if (!w[4] && ballX > x + blockW) {
-      w[4] = true;
-      score++;
-
-      floatingTexts.push({
-        x: ballX,
-        y: ballY,
-        alpha: 255
-      });
-    }
-
-    // COLLISION
-    let hitTop =
-      ballX + ballSize/2 > x &&
-      ballX - ballSize/2 < x + blockW &&
-      ballY - ballSize/2 < gapY;
-
-    let hitBottom =
-      ballX + ballSize/2 > x &&
-      ballX - ballSize/2 < x + blockW &&
-      ballY + ballSize/2 > gapY + gapH;
-
-    if (hitTop || hitBottom) {
-      decreaseHealth();
-      shakeBall();
-    }
-  }
-}
-
-function shakeBall() {
-  ballX += random(-2, 2);
-  ballY += random(-2, 2);
-}
-
-// Health lebih cepat berkurang
 function decreaseHealth() {
-  health -= 2;     // dari 1 → 2
+  health -= healthDecrease;
+  if (health <= 0) gameOver();
+}
+
+function score() {
+  scoreValue++;
 }
 
 
-// ===========================================================
-// FLOATING +1
-// ===========================================================
-function drawFloatingTexts() {
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    let t = floatingTexts[i];
-
-    fill(255, t.alpha);
-    textSize(26);
-    text("+1", t.x, t.y);
-
-    t.y -= 1;
-    t.alpha -= 4;
-
-    if (t.alpha <= 0) floatingTexts.splice(i, 1);
-  }
-}
-
-
-// ===========================================================
-// HUD
-// ===========================================================
-function drawHUD() {
-  textSize(24);
+// =============================
+// GAME STATE
+// =============================
+function gameOverScreen() {
+  background(0);
+  textAlign(CENTER);
   fill(255);
-  textAlign(LEFT);
-  text('Score: ' + score, 20, 40);
-
-  text('Health: ' + health, 20, 70);
+  textSize(30);
+  text("Game Over", width / 2, height / 2 - 20);
+  textSize(15);
+  text("Click to Restart", width / 2, height / 2 + 10);
 }
 
-function healthCheck() {
-  if (health <= 0) {
-    gameScreen = 2;
-  }
-}
-
-
-// ===========================================================
-// INPUT
-// ===========================================================
-function mousePressed() {
-  if (gameScreen === 0) {
-    gameScreen = 1;
-    restartGame();
-  } else if (gameScreen === 2) {
-    gameScreen = 0;
-  }
-}
-
-function restartGame() {
-  score = 0;
-  health = 3;
-
-  ballX = width / 3;
-  ballY = height / 2;
-  ballSpeedVert = 0;
-  ballSpeedHorizon = 0;
-
+function restart() {
+  scoreValue = 0;
+  health = maxHealth;
+  ballX = width / 4;
+  ballY = height / 5;
+  lastAddTime = 0;
   walls = [];
+  ballSpeedHorizon = 0;
+  ballSpeedVert = 0;
+  gameScreen = 0;
+}
+
+function gameOver() {
+  gameScreen = 2;
+}
+
+
+// =============================
+// INPUT
+// =============================
+function mousePressed() {
+  if (gameScreen === 0) gameScreen = 1;
+  else if (gameScreen === 2) restart();
 }
